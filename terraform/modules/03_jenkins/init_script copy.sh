@@ -9,47 +9,13 @@ wait_for_apt() {
   done
 }
 
-wait_for_jenkins() {
-  max_retries=30
-  counter=0
-
-  while [ $counter -lt $max_retries ]; do
-    if curl -s http://localhost:8080/login | grep -q "Authentication required"; then
-      echo "Jenkins is up and running!"
-      return 0
-    fi
-    echo "Waiting for Jenkins to be ready..."
-    sleep 2
-    counter=$((counter+1))
-  done
-
-  echo "Jenkins did not become ready in time."
-  return 1
-}
-
-wait_for_sonar() {
-  max_retries=30
-  counter=0
-
-  while [ $counter -lt $max_retries ]; do
-    if curl -s http://localhost:9000/api/system/health | grep -q '"health":"GREEN"'; then
-      echo "SonarQube is up and running!"
-      return 0
-    fi
-    echo "Waiting for SonarQube to be ready..."
-    sleep 2
-    counter=$((counter+1))
-  done
-
-  echo "SonarQube did not become ready in time."
-  return 1
-}
-
 wait_for_apt
+
+# Update and install necessary packages
 sudo apt-get update
-wait_for_apt
 sudo apt-get install -y mc htop default-mysql-client wget
-wait_for_apt
+
+# Установка основных утилит
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common git jq unzip
 
 # Настройка timezone
@@ -58,9 +24,7 @@ timedatectl set-timezone UTC
 # Установка Docker
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-wait_for_apt
 apt-get update
-wait_for_apt
 apt-get install -y docker-ce docker-ce-cli containerd.io
 usermod -aG docker ${admin_username}
 systemctl enable docker
@@ -71,29 +35,25 @@ curl -L "https://github.com/docker/compose/releases/download/v2.20.3/docker-comp
 chmod +x /usr/local/bin/docker-compose
 
 # Установка Java 17
-wait_for_apt
 apt-get install -y fontconfig openjdk-17-jre openjdk-17-jdk
 
 # Установка Jenkins
 wget -q -O - https://pkg.jenkins.io/debian/jenkins.io-2023.key | apt-key add -
 echo "deb https://pkg.jenkins.io/debian-stable binary/" > /etc/apt/sources.list.d/jenkins.list
-wait_for_apt
 apt-get update
-wait_for_apt
 apt-get install -y jenkins
 usermod -aG docker jenkins
 systemctl enable jenkins
 systemctl start jenkins
-wait_for_jenkins
+
+# Ждем запуска Jenkins
+sleep 30
 
 # Установка Trivy
-wait_for_apt
 apt-get install -y wget apt-transport-https gnupg lsb-release
 wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -
 echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | tee -a /etc/apt/sources.list.d/trivy.list
-wait_for_apt
 apt-get update
-wait_for_apt
 apt-get install -y trivy
 
 # Установка Azure CLI
@@ -111,7 +71,6 @@ docker run -d --name sonar \
   -v /opt/sonarqube/logs:/opt/sonarqube/logs \
   -v /opt/sonarqube/extensions:/opt/sonarqube/extensions \
   sonarqube:lts-community
-wait_for_sonar
 
 # Клонирование проекта Netflix
 git clone https://github.com/ASKoshelenko/DevSecOps.git /tmp/netflix
@@ -166,7 +125,6 @@ docker run -d --name netflix -p 8081:80 netflix:latest
 
 # Установка Node.js для Jenkins плагинов
 curl -sL https://deb.nodesource.com/setup_16.x | bash -
-wait_for_apt
 apt-get install -y nodejs
 
 # Вывод информации о Jenkins
@@ -313,3 +271,38 @@ EOF
 chown ${admin_username}:${admin_username} /home/${admin_username}/README.md
 
 echo "Настройка завершена!"
+
+# #!/bin/bash
+# set -e
+
+# # Wait for apt lock to be released
+# wait_for_apt() {
+#   while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 ; do
+#     echo "Waiting for other apt-get instances to finish..."
+#     sleep 1
+#   done
+# }
+
+# wait_for_apt
+
+# # Update and install necessary packages
+# sudo apt-get update
+# sudo apt-get install -y mc htop default-mysql-client wget
+
+# # Download DigiCert Global Root CA certificate
+# sudo wget https://dl.cacerts.digicert.com/DigiCertGlobalRootCA.crt.pem -O /home/${admin_username}/DigiCertGlobalRootCA.crt.pem
+# sudo chown ${admin_username}:${admin_username} /home/${admin_username}/DigiCertGlobalRootCA.crt.pem
+# sudo chmod 644 /home/${admin_username}/DigiCertGlobalRootCA.crt.pem
+
+# # Create a MySQL configuration file with SSL settings
+# sudo tee /home/${admin_username}/.my.cnf << EOF
+# [client]
+# ssl-ca=/home/${admin_username}/DigiCertGlobalRootCA.crt.pem
+# ssl=1
+# EOF
+
+# # Set correct permissions for the MySQL configuration file
+# sudo chown ${admin_username}:${admin_username} /home/${admin_username}/.my.cnf
+# sudo chmod 600 /home/${admin_username}/.my.cnf
+
+# echo "MySQL client installed and configured with SSL certificate for user ${admin_username}."
