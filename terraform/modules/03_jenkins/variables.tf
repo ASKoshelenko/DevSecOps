@@ -60,3 +60,24 @@ variable "source_image_reference" {
     version   = string
   })
 }
+
+variable "tmdb_api_key" {
+  description = "API Key for TMDB"
+  type        = string
+}
+
+variable "container_registry" {
+  description = "Azure Container Registry login server"
+  type        = string
+}
+
+variable "container_registry_username" {
+  description = "Azure Container Registry admin username"
+  type        = string
+}
+
+variable "container_registry_password" {
+  description = "Azure Container Registry admin password"
+  type        = string
+  sensitive   = true
+}

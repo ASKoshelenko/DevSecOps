@@ -58,6 +58,7 @@ Thumbs.db
 *.dylib
 
 # Ignore any backup files
+terraform/terraform.tfvars.bak
 *.bak
 *.backup
 *~

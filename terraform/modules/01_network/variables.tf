@@ -18,52 +18,15 @@ variable "vnet_address_space" {
   type        = list(string)
 }
 
-variable "public_subnet_address_prefix" {
-  description = "Address prefix for the services subnet"
+variable "jenkins_subnet_prefix" {
+  description = "Address prefix for the jenkins subnet"
   type        = string
 }
 
-variable "private_subnet_address_prefix" {
-  description = "Address prefix for the services subnet"
+variable "monitoring_subnet_prefix" {
+  description = "Address prefix for the monitoring subnet"
   type        = string
 }
-
-variable "bastion_subnet_address_prefix" {
-  description = "Address prefix for the services subnet"
-  type        = string
-}
-
-variable "monitoring_subnet_address_prefix" {
-  description = "Address prefix for the services subnet"
-  type        = string
-}
-
-variable "mysql_subnet_address_prefix" {
-  description = "The address prefix to use for the MySQL subnet"
-  type        = string
-}
-
-# variable "public_routes" {
-#   description = "List of routes to be added to the route table"
-#   type = list(object({
-#     name                   = string
-#     address_prefix         = string
-#     next_hop_type          = string
-#     next_hop_in_ip_address = string
-#   }))
-#   default = []
-# }
-
-# variable "private_routes" {
-#   description = "List of routes to be added to the route table"
-#   type = list(object({
-#     name                   = string
-#     address_prefix         = string
-#     next_hop_type          = string
-#     next_hop_in_ip_address = string
-#   }))
-#   default = []
-# }
 
 variable "create_public_ips" {
   description = "Map of public IPs to create"
