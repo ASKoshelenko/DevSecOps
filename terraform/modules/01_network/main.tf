@@ -3,7 +3,7 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
 }
 
-resource "azurerm_virtual_network" "marathon_virtual_network" {
+resource "azurerm_virtual_network" "vnet" {
   name                = "vnet-${var.project_name}-${var.environment}"
   address_space       = var.vnet_address_space
   location            = var.location
@@ -14,70 +14,22 @@ resource "azurerm_virtual_network" "marathon_virtual_network" {
 # Subnets
 #####################
 
-resource "azurerm_subnet" "bastion_subnet" {
-  name                 = "bastion-subnet-${var.project_name}-${var.environment}"
+resource "azurerm_subnet" "jenkins_subnet" {
+  name                 = "jenkins-subnet-${var.project_name}-${var.environment}"
   resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.marathon_virtual_network.name
-  address_prefixes     = [var.bastion_subnet_address_prefix]
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = [var.jenkins_subnet_prefix]
 }
 
 resource "azurerm_subnet" "monitoring_subnet" {
   name                 = "monitoring-subnet-${var.project_name}-${var.environment}"
   resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.marathon_virtual_network.name
-  address_prefixes     = [var.monitoring_subnet_address_prefix]
-}
-
-resource "azurerm_subnet" "public_subnet" {
-  name                 = "public-subnet-${var.project_name}-${var.environment}"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.marathon_virtual_network.name
-  address_prefixes     = [var.public_subnet_address_prefix]
-
-  delegation {
-    name = "app-service-delegation"
-    service_delegation {
-      name    = "Microsoft.Web/serverFarms"
-      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-    }
-  }
-}
-
-resource "azurerm_subnet" "private_subnet" {
-  name                 = "private-subnet-${var.project_name}-${var.environment}"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.marathon_virtual_network.name
-  address_prefixes     = [var.private_subnet_address_prefix]
-
-  delegation {
-    name = "app-service-delegation"
-    service_delegation {
-      name    = "Microsoft.Web/serverFarms"
-      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-    }
-  }
-}
-
-resource "azurerm_subnet" "mysql_subnet" {
-  name                 = "mysql-subnet-${var.project_name}-${var.environment}"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.marathon_virtual_network.name
-  address_prefixes     = [var.mysql_subnet_address_prefix]
-  service_endpoints    = ["Microsoft.Storage"]
-  
-  delegation {
-    name = "fs"
-    service_delegation {
-      name = "Microsoft.DBforMySQL/flexibleServers"
-      actions = [
-        "Microsoft.Network/virtualNetworks/subnets/join/action",
-      ]
-    }
-  }
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = [var.monitoring_subnet_prefix]
 }
 
 #####################
-# Public IP's and DNS
+# Public IP's
 #####################
 
 resource "azurerm_public_ip" "public_ips" {
@@ -87,17 +39,4 @@ resource "azurerm_public_ip" "public_ips" {
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = each.value.allocation_method
   sku                 = each.value.sku
-}
-
-resource "azurerm_private_dns_zone" "mysql" {
-  name                = "privatelink.mysql.database.azure.com"
-  resource_group_name = azurerm_resource_group.rg.name
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "mysql" {
-  name                  = "mysqldnslink"
-  resource_group_name   = azurerm_resource_group.rg.name
-  private_dns_zone_name = azurerm_private_dns_zone.mysql.name
-  virtual_network_id    = azurerm_virtual_network.marathon_virtual_network.id
-  registration_enabled  = false
 }
