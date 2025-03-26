@@ -23,24 +23,24 @@ variable "environment" {
   type        = string
 }
 
+variable "admin_username" {
+  description = "Username for the VM"
+  type        = string
+}
+
 variable "vm_size" {
   description = "Size of the virtual machine"
   type        = string
 }
 
-variable "admin_username" {
-  description = "Username for the VM"
+variable "public_ip_id" {
+  description = "The ID of the public IP address to associate with the VM"
   type        = string
 }
 
 variable "admin_ssh_keys" {
   description = "List of public SSH keys for VM access"
   type        = list(string)
-}
-
-variable "public_ip_id" {
-  description = "The ID of the public IP address to associate with the VM"
-  type        = string
 }
 
 variable "os_disk_config" {
@@ -67,6 +67,11 @@ variable "grafana_password" {
   sensitive   = true
 }
 
+variable "azure_subscription_id" {
+  description = "Azure Subscription ID"
+  type        = string
+}
+
 variable "azure_tenant_id" {
   description = "Azure Tenant ID"
   type        = string
@@ -83,9 +88,7 @@ variable "azure_client_secret" {
   sensitive   = true
 }
 
-variable "azure_subscription_id" {
-  description = "Azure Subscription ID"
+variable "jenkins_ip" {
+  description = "IP address of the Jenkins server"
   type        = string
 }
-
-

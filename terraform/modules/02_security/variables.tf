@@ -18,27 +18,13 @@ variable "environment" {
   type        = string
 }
 
-variable "public_subnet_id" {
-  description = "ID of the services subnet to associate with the public"
+variable "jenkins_subnet_id" {
+  description = "ID of the subnet to associate with the jenkins security group"
   type        = string
 }
 
-variable "private_subnet_id" {
-  description = "ID of the services subnet to associate with the private"
-  type        = string
-}
-
-variable "bastion_subnet_id" {
-  description = "ID of the services subnet to associate with the bastion"
-  type        = string
-}
 variable "monitoring_subnet_id" {
-  description = "ID of the services subnet to associate with the bastion"
-  type        = string
-}
-
-variable "mysql_subnet_id" {
-  description = "ID of the services subnet to associate with the mysql"
+  description = "ID of the subnet to associate with the monitoring security group"
   type        = string
 }
 
@@ -47,12 +33,12 @@ variable "allowed_ip_ranges" {
   type        = list(string)
 }
 
-variable "public_subnet_address_prefix" {
-  description = "The address prefix for the public subnet"
+variable "jenkins_subnet_prefix" {
+  description = "The address prefix for the jenkins subnet"
   type        = string
 }
 
-variable "private_subnet_address_prefix" {
-  description = "The address prefix for the private subnet"
+variable "monitoring_subnet_prefix" {
+  description = "The address prefix for the monitoring subnet"
   type        = string
 }
