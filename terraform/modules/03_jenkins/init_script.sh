@@ -48,7 +48,7 @@ wait_for_sonar() {
 wait_for_apt
 sudo apt-get update
 wait_for_apt
-sudo apt-get install -y mc htop default-mysql-client wget
+sudo apt-get install -y mc htop wget
 wait_for_apt
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common git jq unzip
 
