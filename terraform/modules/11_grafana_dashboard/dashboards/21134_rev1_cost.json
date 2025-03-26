@@ -1,0 +1,924 @@
+
+{
+  "__inputs": [
+    {
+      "name": "DS_INFINITY-DEVSTACK",
+      "label": "infinity-datasource",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "yesoreyeram-infinity-datasource",
+      "pluginName": "Infinity"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "panel",
+      "id": "barchart",
+      "name": "Bar chart",
+      "version": ""
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.1.0-70903"
+    },
+    {
+      "type": "datasource",
+      "id": "yesoreyeram-infinity-datasource",
+      "name": "Infinity",
+      "version": "2.7.1"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "panels": [],
+      "title": "Resource Usage Cost",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 30
+              },
+              {
+                "color": "dark-orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.75,
+        "colorByField": "Cost",
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "ServiceName",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "columns": [],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${datasource_uid}"
+          },
+          "filters": [],
+          "format": "table",
+          "global_query_id": "",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "properties.rows[*]",
+          "source": "url",
+          "type": "json",
+          "url": "https://management.azure.com/subscriptions/${subscription_id}/providers/Microsoft.CostManagement/query?api-version=2023-11-01",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_type": "raw",
+            "data": "{\n  \"type\": \"Usage\",\n  \"timeframe\": \"Custom\",\n  \"timePeriod\": {\n    \"from\": \"$from\",\n    \"to\": \"$to\"\n  },\n  \"dataset\": {\n    \"granularity\": \"None\",\n    \"aggregation\": {\n      \"totalCost\": {\n        \"name\": \"Cost\",\n        \"function\": \"Sum\"\n      }\n    },\n    \"grouping\": [\n      {\n        \"type\": \"Dimension\",\n        \"name\": \"ServiceName\"\n      }\n    ]\n  }\n}",
+            "method": "POST"
+          }
+        }
+      ],
+      "title": "Usage Cost by Services - Applied Duration",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "replace": true,
+            "source": "A"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "2": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "0": "Cost",
+              "1": "ServiceName",
+              "2": "Currency"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "Cost"
+              }
+            ]
+          }
+        },
+        {
+          "id": "limit",
+          "options": {}
+        }
+      ],
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 30
+              },
+              {
+                "color": "dark-orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "id": 3,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.75,
+        "colorByField": "Cost",
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "ServiceName",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "columns": [],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${datasource_uid}"
+          },
+          "filters": [],
+          "format": "table",
+          "global_query_id": "",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "properties.rows[*]",
+          "source": "url",
+          "type": "json",
+          "url": "https://management.azure.com/subscriptions/${subscription_id}/providers/Microsoft.CostManagement/query?api-version=2023-11-01",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_type": "raw",
+            "data": "{\n  \"type\": \"Usage\",\n  \"timeframe\": \"Monthly\",\n  \"dataset\": {\n    \"granularity\": \"None\",\n    \"aggregation\": {\n      \"totalCost\": {\n        \"name\": \"Cost\",\n        \"function\": \"Sum\"\n      }\n    },\n    \"grouping\": [\n      {\n        \"type\": \"Dimension\",\n        \"name\": \"ServiceName\"\n      }\n    ]\n  }\n}",
+            "method": "POST"
+          }
+        }
+      ],
+      "title": "Usage Cost by Services - This Month",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "replace": true,
+            "source": "A"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "2": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "0": "Cost",
+              "1": "ServiceName",
+              "2": "Currency"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "Cost"
+              }
+            ]
+          }
+        },
+        {
+          "id": "limit",
+          "options": {}
+        }
+      ],
+      "type": "barchart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "id": 4,
+      "panels": [],
+      "title": "Current Month - Usage Cost",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Cost in $currency",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 6,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 5,
+      "options": {
+        "barRadius": 0.2,
+        "barWidth": 0.8,
+        "colorByField": "Cost",
+        "fullHighlight": true,
+        "groupWidth": 0.8,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "ServiceName",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 300
+      },
+      "targets": [
+        {
+          "columns": [],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${datasource_uid}"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "properties.rows[*]",
+          "source": "url",
+          "type": "json",
+          "url": "https://management.azure.com/subscriptions/${subscription_id}/providers/Microsoft.CostManagement/query?api-version=2023-11-01",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_type": "raw",
+            "data": "{\n  \"type\": \"Usage\",\n  \"timeframe\": \"MonthToDate\",\n  \"dataset\": {\n    \"granularity\": \"Daily\",\n    \"aggregation\": {\n      \"totalCost\": {\n        \"name\": \"Cost\",\n        \"function\": \"Sum\"\n      }\n    },\n    \"grouping\": [\n      {\n        \"type\": \"Dimension\",\n        \"name\": \"ServiceName\"\n      }\n    ]\n  }\n}",
+            "method": "POST"
+          }
+        }
+      ],
+      "title": "$service - Usage Cost",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "replace": true,
+            "source": "A"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "1": true,
+              "2": false,
+              "3": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "0": "Cost",
+              "1": "Timestamp",
+              "2": "ServiceName",
+              "3": "Currency"
+            }
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "equal",
+                  "options": {
+                    "value": "$service"
+                  }
+                },
+                "fieldName": "ServiceName"
+              }
+            ],
+            "match": "any",
+            "type": "include"
+          }
+        }
+      ],
+      "type": "barchart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 6,
+      "panels": [],
+      "title": "Applied Duration - Usage Cost",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${datasource_uid}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Cost in $currency",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 6,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "id": 7,
+      "options": {
+        "barRadius": 0.2,
+        "barWidth": 0.8,
+        "colorByField": "Cost",
+        "fullHighlight": true,
+        "groupWidth": 0.8,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "Timestamp",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "columns": [],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "${datasource_uid}"
+          },
+          "filters": [],
+          "format": "timeseries",
+          "global_query_id": "",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "properties.rows[*]",
+          "source": "url",
+          "type": "json",
+          "url": "https://management.azure.com/subscriptions/${subscription_id}/providers/Microsoft.CostManagement/query?api-version=2023-11-01",
+          "url_options": {
+            "body_content_type": "application/json",
+            "body_type": "raw",
+            "data": "{\n  \"type\": \"Usage\",\n  \"timeframe\": \"Custom\",\n  \"timePeriod\": {\n    \"from\": \"$from\",\n    \"to\": \"$to\"\n  },\n  \"dataset\": {\n    \"granularity\": \"Monthly\",\n    \"aggregation\": {\n      \"totalCost\": {\n        \"name\": \"Cost\",\n        \"function\": \"Sum\"\n      }\n    },\n    \"grouping\": [\n      {\n        \"type\": \"Dimension\",\n        \"name\": \"ServiceName\"\n      }\n    ]\n  }\n}",
+            "method": "POST"
+          }
+        }
+      ],
+      "title": "$service - Usage Cost",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "replace": true,
+            "source": "A"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "1": false,
+              "2": false,
+              "3": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "0": "Cost",
+              "1": "Timestamp",
+              "2": "ServiceName",
+              "3": "Currency"
+            }
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "equal",
+                  "options": {
+                    "value": "$service"
+                  }
+                },
+                "fieldName": "ServiceName"
+              }
+            ],
+            "match": "any",
+            "type": "include"
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "time",
+                "targetField": "Timestamp"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
+      "type": "barchart"
+    }
+  ],
+  "refresh": "1d",
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "2024-08-01",
+          "value": "2024-08-01"
+        },
+        "hide": 0,
+        "label": "From",
+        "name": "from",
+        "options": [
+          {
+            "selected": true,
+            "text": "2024-08-01",
+            "value": "2024-08-01"
+          }
+        ],
+        "query": "2024-01-01",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "2024-12-30",
+          "value": "2024-12-30"
+        },
+        "hide": 0,
+        "label": "To",
+        "name": "to",
+        "options": [
+          {
+            "selected": true,
+            "text": "2024-12-30",
+            "value": "2024-12-30"
+          }
+        ],
+        "query": "2024-12-30",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "Storage",
+          "value": "Storage"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "ServiceName",
+        "multi": false,
+        "name": "service",
+        "options": [
+          {
+            "selected": false,
+            "text": "Application Gateway",
+            "value": "Application Gateway"
+          },
+          {
+            "selected": false,
+            "text": "Automation",
+            "value": "Automation"
+          },
+          {
+            "selected": false,
+            "text": "Azure Data Factory v2",
+            "value": "Azure Data Factory v2"
+          },
+          {
+            "selected": false,
+            "text": "Azure Database for PostgreSQL",
+            "value": "Azure Database for PostgreSQL"
+          },
+          {
+            "selected": false,
+            "text": "Azure DNS",
+            "value": "Azure DNS"
+          },
+          {
+            "selected": false,
+            "text": "Azure Kubernetes Service",
+            "value": "Azure Kubernetes Service"
+          },
+          {
+            "selected": false,
+            "text": "Azure Monitor",
+            "value": "Azure Monitor"
+          },
+          {
+            "selected": false,
+            "text": "Backup",
+            "value": "Backup"
+          },
+          {
+            "selected": false,
+            "text": "Bandwidth",
+            "value": "Bandwidth"
+          },
+          {
+            "selected": false,
+            "text": "Key Vault",
+            "value": "Key Vault"
+          },
+          {
+            "selected": false,
+            "text": "Insight and Analytics",
+            "value": "Insight and Analytics"
+          },
+          {
+            "selected": false,
+            "text": "Load Balancer",
+            "value": "Load Balancer"
+          },
+          {
+            "selected": false,
+            "text": "Log Analytics",
+            "value": "Log Analytics"
+          },
+          {
+            "selected": false,
+            "text": "Logic Apps",
+            "value": "Logic Apps"
+          },
+          {
+            "selected": false,
+            "text": "Microsoft Defender for Cloud",
+            "value": "Microsoft Defender for Cloud"
+          },
+          {
+            "selected": false,
+            "text": "Azure Database for MySQL",
+            "value": "Azure Database for MySQL"
+          },
+          {
+            "selected": true,
+            "text": "Storage",
+            "value": "Storage"
+          },
+          {
+            "selected": false,
+            "text": "Unassigned",
+            "value": "Unassigned"
+          },
+          {
+            "selected": false,
+            "text": "Virtual Machines",
+            "value": "Virtual Machines"
+          },
+          {
+            "selected": false,
+            "text": "Virtual Network",
+            "value": "Virtual Network"
+          }
+        ],
+        "query": "Application Gateway, Automation, Azure Data Factory v2, Azure Database for PostgreSQL, Azure DNS, Azure Kubernetes Service, Azure Monitor, Backup, Bandwidth, Key Vault, Insight and Analytics, Load Balancer, Log Analytics, Logic Apps, Microsoft Defender for Cloud, Azure Database for MySQL, Storage, Unassigned, Virtual Machines, Virtual Network",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "USD",
+          "value": "USD"
+        },
+        "hide": 0,
+        "label": "Currency",
+        "name": "currency",
+        "options": [
+          {
+            "selected": true,
+            "text": "USD",
+            "value": "USD"
+          }
+        ],
+        "query": "USD",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-2d",
+    "to": "now"
+  },
+  "timeRangeUpdatedDuringEditOrView": false,
+  "timepicker": {},
+  "timezone": "",
+  "title": "Azure Cost Analysis",
+  "uid": "fdmsz6sc6myv4d",
+  "version": 9,
+  "weekStart": "",
+  "gnetId": 21134,
+  "description": "This dashboard enables us to analyse the usage cost of Azure cloud services."
+}
