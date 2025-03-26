@@ -48,15 +48,14 @@ resource "azurerm_linux_virtual_machine" "jenkins_vm" {
     version   = var.source_image_reference.version
   }
 
-  custom_data = base64encode(
-    templatefile("${path.module}/init_script.sh", {
-      admin_username         = var.admin_username
-      tmdb_api_key           = var.tmdb_api_key
-      container_registry     = var.container_registry
-      container_registry_username = var.container_registry_username
-      container_registry_password = var.container_registry_password
-    })
-  )
+  custom_data = base64encode(templatefile("${path.module}/init_script.sh", {
+    admin_username             = var.admin_username
+    tmdb_api_key               = var.tmdb_api_key
+    TMDB_V3_API_KEY            = var.tmdb_api_key
+    container_registry         = var.container_registry
+    container_registry_username = var.container_registry_username
+    container_registry_password = var.container_registry_password
+  }))
 
   identity {
     type = "SystemAssigned"

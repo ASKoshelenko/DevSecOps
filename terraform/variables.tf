@@ -173,19 +173,3 @@ variable "infinity_client_secret" {
   type        = string
   sensitive   = true
 }
-
-variable "mysql_config" {
-  description = "Configuration for MySQL"
-  type = object({
-    admin_username = string
-    admin_password = string
-    sku_name       = string
-    version        = string
-  })
-  sensitive = true
-}
-
-variable "mysql_retention_days" {
-  description = "MySQL retention days"
-  type        = string
-}

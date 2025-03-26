@@ -1,8 +1,19 @@
 #!/bin/bash
+set -e
 
-# Обновление пакетов
-apt-get update
-apt-get upgrade -y
+# Wait for apt lock to be released
+wait_for_apt() {
+  while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 ; do
+    echo "Waiting for other apt-get instances to finish..."
+    sleep 1
+  done
+}
+
+wait_for_apt
+
+# Update and install necessary packages
+sudo apt-get update
+sudo apt-get install -y mc htop default-mysql-client wget
 
 # Установка основных утилит
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common git jq unzip
