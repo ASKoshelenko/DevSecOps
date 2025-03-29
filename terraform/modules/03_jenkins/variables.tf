@@ -28,6 +28,12 @@ variable "admin_username" {
   type        = string
 }
 
+variable "admin_password" {
+  description = "Password for the VM admin user"
+  type        = string
+  sensitive   = true
+}
+
 variable "vm_size" {
   description = "Size of the virtual machine"
   type        = string
@@ -66,18 +72,13 @@ variable "tmdb_api_key" {
   type        = string
 }
 
-variable "container_registry" {
-  description = "Azure Container Registry login server"
+variable "docker_username" {
+  description = "Username for Docker Hub"
   type        = string
 }
 
-variable "container_registry_username" {
-  description = "Azure Container Registry admin username"
-  type        = string
-}
-
-variable "container_registry_password" {
-  description = "Azure Container Registry admin password"
+variable "docker_password" {
+  description = "Password or token for Docker Hub"
   type        = string
   sensitive   = true
 }

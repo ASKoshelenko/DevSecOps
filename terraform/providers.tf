@@ -13,7 +13,7 @@ terraform {
       version = "~> 4.0"
     }
   }
-  
+
   # Если вам требуется бэкенд для состояния Terraform, раскомментируйте и настройте по необходимости
   # backend "azurerm" {
   #   resource_group_name  = "tfstate"

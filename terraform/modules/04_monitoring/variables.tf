@@ -28,6 +28,12 @@ variable "admin_username" {
   type        = string
 }
 
+variable "admin_password" {
+  description = "Password for the VM admin user"
+  type        = string
+  sensitive   = true
+}
+
 variable "vm_size" {
   description = "Size of the virtual machine"
   type        = string

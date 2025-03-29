@@ -1,74 +1,10 @@
 #!/bin/bash
 
-set -e
-
-wait_for_apt() {
-  while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 ; do
-    echo "Waiting for other apt-get instances to finish..."
-    sleep 1
-  done
-}
-
-wait_for_grafana() {
-  max_retries=30
-  counter=0
-
-  while [ $counter -lt $max_retries ]; do
-    if curl -s http://localhost:3000/api/health | grep -q "ok"; then
-      echo "Grafana is up and running!"
-      return 0
-    fi
-    echo "Waiting for Grafana to be ready..."
-    sleep 2
-    counter=$((counter+1))
-  done
-
-  echo "Grafana did not become ready in time."
-  return 1
-}
-
-wait_for_prometheus() {
-  max_retries=30
-  counter=0
-
-  while [ $counter -lt $max_retries ]; do
-    if curl -s http://localhost:9090/-/ready | grep -q "Prometheus is Ready" || curl -s http://localhost:9090/ | grep -q "Prometheus Time Series Collection and Processing Server"; then
-      echo "Prometheus is up and running!"
-      return 0
-    fi
-    echo "Waiting for Prometheus to be ready..."
-    sleep 2
-    counter=$((counter+1))
-  done
-
-  echo "Prometheus did not become ready in time."
-  return 1
-}
-
-wait_for_node_exporter() {
-  max_retries=30
-  counter=0
-
-  while [ $counter -lt $max_retries ]; do
-    if curl -s http://localhost:9100/metrics | grep -q "node_"; then
-      echo "Node Exporter is up and running!"
-      return 0
-    fi
-    echo "Waiting for Node Exporter to be ready..."
-    sleep 2
-    counter=$((counter+1))
-  done
-
-  echo "Node Exporter did not become ready in time."
-  return 1
-}
-
-wait_for_apt
+# Обновление пакетов
 apt-get update
-wait_for_apt
 apt-get upgrade -y
-wait_for_apt
 
+# Установка основных утилит
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common git wget gnupg2 lsb-release
 
 # Настройка timezone
@@ -86,8 +22,6 @@ mv prometheus promtool /usr/local/bin/
 mv consoles/ console_libraries/ /etc/prometheus/
 mv prometheus.yml /etc/prometheus/prometheus.yml
 chown -R prometheus:prometheus /etc/prometheus/ /data/
-cd ..
-rm -rf prometheus-2.47.1.linux-amd64*
 
 # Создание конфигурации для systemd
 cat > /etc/systemd/system/prometheus.service << EOF
@@ -105,12 +39,12 @@ Group=prometheus
 Type=simple
 Restart=on-failure
 RestartSec=5s
-ExecStart=/usr/local/bin/prometheus \
-  --config.file=/etc/prometheus/prometheus.yml \
-  --storage.tsdb.path=/data \
-  --web.console.templates=/etc/prometheus/consoles \
-  --web.console.libraries=/etc/prometheus/console_libraries \
-  --web.listen-address=0.0.0.0:9090 \
+ExecStart=/usr/local/bin/prometheus \\
+  --config.file=/etc/prometheus/prometheus.yml \\
+  --storage.tsdb.path=/data \\
+  --web.console.templates=/etc/prometheus/consoles \\
+  --web.console.libraries=/etc/prometheus/console_libraries \\
+  --web.listen-address=0.0.0.0:9090 \\
   --web.enable-lifecycle
 
 [Install]
@@ -172,14 +106,10 @@ WantedBy=multi-user.target
 EOF
 
 # Установка Grafana
-wait_for_apt
 apt-get install -y apt-transport-https software-properties-common
-wait_for_apt
 wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -
 echo "deb https://packages.grafana.com/oss/deb stable main" | tee -a /etc/apt/sources.list.d/grafana.list
-wait_for_apt
 apt-get update
-wait_for_apt
 apt-get -y install grafana
 
 # Директория для provisioning в Grafana
@@ -216,7 +146,7 @@ providers:
       path: /var/lib/grafana/dashboards
 EOF
 
-# Создание базового дашборда
+# Создание базового дашборда для мониторинга хостов
 cat > /var/lib/grafana/dashboards/node-exporter.json << 'EOF'
 {
   "annotations": {
@@ -355,24 +285,158 @@ cat > /var/lib/grafana/dashboards/node-exporter.json << 'EOF'
 }
 EOF
 
+# Создание дашборда для Docker
+cat > /var/lib/grafana/dashboards/docker.json << 'EOF'
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 2,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{name=~\".*netflix.*\"}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "Netflix Container Memory Usage",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "bytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 22,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "Docker Containers",
+  "uid": "docker-dashboard",
+  "version": 1
+}
+EOF
+
 # Запуск служб
 systemctl daemon-reload
 systemctl enable prometheus
 systemctl start prometheus
-wait_for_prometheus
-
 systemctl enable node_exporter
 systemctl start node_exporter
-wait_for_node_exporter
-
 systemctl enable grafana-server
 systemctl start grafana-server
-wait_for_grafana
 
 # Изменение пароля администратора Grafana
 grafana-cli admin reset-admin-password ${grafana_password}
 
-# Создание README
+# Создание README с инструкциями
 cat > /home/${admin_username}/README.md << 'EOF'
 # DevSecOps на Azure - Мониторинг
 
@@ -391,14 +455,14 @@ Prometheus настроен на сбор метрик с:
 
 ## Grafana
 
-Grafana настроена и содержит базовые дашборды для мониторинга системы.
+Grafana настроена и содержит базовые дашборды для мониторинга системы и Docker контейнеров.
 Вы можете импортировать дополнительные дашборды из каталога Grafana.
 
 ## Советы
 
 Для импорта дашбордов из библиотеки Grafana:
 1. Перейдите в меню "+" и выберите "Import"
-2. Введите ID дашборда (например, 1860 для Node Exporter или 9964 для Jenkins)
+2. Введите ID дашборда (например, 1860 для Node Exporter, 179 для Docker или 9964 для Jenkins)
 3. Выберите источник данных Prometheus
 4. Нажмите "Import"
 EOF
@@ -406,11 +470,4 @@ EOF
 # Назначение прав
 chown ${admin_username}:${admin_username} /home/${admin_username}/README.md
 
-# Создание SSH ключа
-mkdir -p /home/${admin_username}/.ssh
-ssh-keygen -t rsa -N "" -f /home/${admin_username}/.ssh/id_rsa_jenkins
-chown -R ${admin_username}:${admin_username} /home/${admin_username}/.ssh
-chmod 700 /home/${admin_username}/.ssh
-chmod 600 /home/${admin_username}/.ssh/id_rsa_jenkins
-
-echo "Настройка завершена!"
+echo "Настройка мониторинга завершена!"

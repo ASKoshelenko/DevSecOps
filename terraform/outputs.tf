@@ -18,14 +18,6 @@ output "storage_account_name" {
   value = module.storage.storage_account_name
 }
 
-output "container_registry_name" {
-  value = module.container_registry.acr_name
-}
-
-output "container_registry_login_server" {
-  value = module.container_registry.acr_login_server
-}
-
 output "jenkins_admin_password" {
   value     = "Используйте команду: 'ssh ${var.vm_config.admin_username}@${module.network.public_ip_addresses["jenkins"]} \"sudo cat /var/lib/jenkins/secrets/initialAdminPassword\"'"
   sensitive = false
