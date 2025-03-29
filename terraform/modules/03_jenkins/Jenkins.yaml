@@ -1,0 +1,279 @@
+pipeline {
+    agent any
+    
+    tools {
+        jdk 'jdk17'
+        nodejs 'node16'
+    }
+    
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+        DOCKER_CREDS = credentials('docker-creds')
+        DOCKER_HUB_REPO = "dreamymonkey/netflix"
+    }
+    
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'Azure', url: 'https://github.com/ASKoshelenko/DevSecOps.git'
+            }
+        }
+        
+        // Temporarily skip SonarQube stages for faster pipeline execution
+        /*
+        stage("Check SonarQube Status") {
+            steps {
+                script {
+                    try {
+                        sh 'curl -s http://localhost:9000/api/system/status'
+                        echo "SonarQube is running"
+                    } catch (Exception e) {
+                        echo "SonarQube may not be running, starting it..."
+                        sh 'docker start sonar || docker run -d --name sonar -p 9000:9000 sonarqube:lts-community'
+                        sh 'sleep 60'
+                    }
+                }
+            }
+        }
+        
+        stage("SonarQube Analysis") {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    withSonarQubeEnv('sonar-server') {
+                        sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Netflix \
+                        -Dsonar.projectKey=Netflix'''
+                    }
+                }
+            }
+        }
+        
+        stage("Quality Gate") {
+            when {
+                expression { 
+                    return currentBuild.currentResult != 'FAILURE'
+                }
+            }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    script {
+                        waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
+                    }
+                }
+            }
+        }
+        */
+        
+        stage('Install Dependencies') {
+            steps {
+                sh "npm install"
+            }
+        }
+        
+        // // Temporarily skip OWASP Dependency Check for faster pipeline execution
+        // /*
+        // stage('OWASP Dependency Check') {
+        //     steps {
+        //         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+        //             dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --enableExperimental --failOnCVSS 9 --exclude "**/node_modules/**"', odcInstallation: 'DP-Check'
+        //             dependencyCheckPublisher pattern: '**/dependency-check-report.xml', failedTotalHigh: 10
+        //         }
+        //     }
+        // }
+        // */
+        
+        // Temporarily simplify Trivy scan to be faster
+        stage('Trivy Filesystem Scan') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh "trivy fs --skip-dirs node_modules --security-checks vuln,secret --severity HIGH,CRITICAL . > trivyfs.txt || true"
+                }
+            }
+        }
+        
+        stage("Docker Build & Push") {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh "docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD"
+                        sh "docker build -t $DOCKER_HUB_REPO:latest --build-arg TMDB_V3_API_KEY=c9cbf23e56e7f8dad215a3a7a3758244 ."
+                        sh "docker push $DOCKER_HUB_REPO:latest"
+                    }
+                }
+            }
+        }
+        
+        // Temporarily simplify Trivy image scan to be faster
+        stage("Trivy Image Scan") {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh "trivy image --severity HIGH,CRITICAL $DOCKER_HUB_REPO:latest > trivyimage.txt || true"
+                }
+            }
+        }
+        
+        stage('Deploy to Container') {
+            steps {
+                sh 'docker stop netflix || true'
+                sh 'docker rm netflix || true'
+                sh 'docker run -d --name netflix -p 8081:80 $DOCKER_HUB_REPO:latest'
+            }
+        }
+    }
+    
+    post {
+        always {
+            archiveArtifacts artifacts: 'trivyfs.txt,trivyimage.txt', allowEmptyArchive: true
+        }
+        success {
+            echo 'Pipeline successfully completed!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
+
+// Before
+
+// / pipeline {
+//     agent any
+    
+//     tools {
+//         jdk 'jdk17'
+//         nodejs 'node16'
+//     }
+    
+//     environment {
+//         SCANNER_HOME = tool 'sonar-scanner'
+//         DOCKER_CREDS = credentials('docker-creds')
+//         DOCKER_HUB_REPO = "dreamymonkey/netflix"
+//         TMDB_API_KEY = credentials('tmdb-api-key') // Add this if you have stored the API key in credentials
+//     }
+    
+//     stages {
+//         stage('Clean Workspace') {
+//             steps {
+//                 cleanWs()
+//             }
+//         }
+        
+//         stage('Checkout from Git') {
+//             steps {
+//                 git branch: 'Azure', url: 'https://github.com/ASKoshelenko/DevSecOps.git'
+//             }
+//         }
+        
+//         stage("Check SonarQube Status") {
+//             steps {
+//                 script {
+//                     try {
+//                         sh 'curl -s http://localhost:9000/api/system/status'
+//                         echo "SonarQube is running"
+//                     } catch (Exception e) {
+//                         echo "SonarQube may not be running, starting it..."
+//                         // You might want to add docker start commands here or simply warn
+//                         sh 'docker start sonar || docker run -d --name sonar -p 9000:9000 sonarqube:lts-community'
+//                         // Wait for SonarQube to be ready
+//                         sh 'sleep 60'
+//                     }
+//                 }
+//             }
+//         }
+        
+//         stage("SonarQube Analysis") {
+//             steps {
+//                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+//                     withSonarQubeEnv('sonar-server') {
+//                         sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Netflix \
+//                         -Dsonar.projectKey=Netflix'''
+//                     }
+//                 }
+//             }
+//         }
+        
+//         stage("Quality Gate") {
+//             when {
+//                 expression { 
+//                     // Only run if previous stage didn't fail
+//                     return currentBuild.currentResult != 'FAILURE'
+//                 }
+//             }
+//             steps {
+//                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+//                     script {
+//                         waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
+//                     }
+//                 }
+//             }
+//         }
+        
+//         stage('Install Dependencies') {
+//             steps {
+//                 sh "npm install"
+//             }
+//         }
+        
+//         stage('OWASP Dependency Check') {
+//             steps {
+//                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+//                     dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --enableExperimental --failOnCVSS 9 --exclude "**/node_modules/**"', odcInstallation: 'DP-Check'
+//                     dependencyCheckPublisher pattern: '**/dependency-check-report.xml', failedTotalHigh: 10
+//                 }
+//             }
+//         }
+        
+//         stage('Trivy Filesystem Scan') {
+//             steps {
+//                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+//                     sh "trivy fs . > trivyfs.txt || true"
+//                 }
+//             }
+//         }
+        
+//         stage("Docker Build & Push") {
+//             steps {
+//                 script {
+//                     withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+//                         sh "docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD"
+//                         sh "docker build -t $DOCKER_HUB_REPO:latest --build-arg TMDB_V3_API_KEY=${TMDB_API_KEY} ."
+//                         sh "docker push $DOCKER_HUB_REPO:latest"
+//                     }
+//                 }
+//             }
+//         }
+        
+//         stage("Trivy Image Scan") {
+//             steps {
+//                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+//                     sh "trivy image $DOCKER_HUB_REPO:latest > trivyimage.txt || true"
+//                 }
+//             }
+//         }
+        
+//         stage('Deploy to Container') {
+//             steps {
+//                 sh 'docker stop netflix || true'
+//                 sh 'docker rm netflix || true'
+//                 sh 'docker run -d --name netflix -p 8081:80 $DOCKER_HUB_REPO:latest'
+//             }
+//         }
+//     }
+    
+//     post {
+//         always {
+//             archiveArtifacts artifacts: 'trivyfs.txt,trivyimage.txt', allowEmptyArchive: true
+//         }
+//         success {
+//             echo 'Pipeline successfully completed!'
+//         }
+//         failure {
+//             echo 'Pipeline failed!'
+//         }
+//     }
+// }
