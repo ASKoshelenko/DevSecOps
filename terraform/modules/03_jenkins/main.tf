@@ -17,6 +17,9 @@ resource "azurerm_linux_virtual_machine" "jenkins_vm" {
   location            = var.location
   size                = var.vm_size
   admin_username      = var.admin_username
+  admin_password      = var.admin_password
+  disable_password_authentication = false
+  
   network_interface_ids = [
     azurerm_network_interface.jenkins_nic.id,
   ]
@@ -49,12 +52,11 @@ resource "azurerm_linux_virtual_machine" "jenkins_vm" {
   }
 
   custom_data = base64encode(templatefile("${path.module}/init_script.sh", {
-    admin_username             = var.admin_username
-    tmdb_api_key               = var.tmdb_api_key
-    TMDB_V3_API_KEY            = var.tmdb_api_key
-    container_registry         = var.container_registry
-    container_registry_username = var.container_registry_username
-    container_registry_password = var.container_registry_password
+    admin_username      = var.admin_username
+    tmdb_api_key        = var.tmdb_api_key
+    TMDB_V3_API_KEY     = var.tmdb_api_key
+    docker_username     = var.docker_username
+    docker_password     = var.docker_password
   }))
 
   identity {

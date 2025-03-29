@@ -1,55 +1,10 @@
 #!/bin/bash
-set -e
 
-# Wait for apt lock to be released
-wait_for_apt() {
-  while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 ; do
-    echo "Waiting for other apt-get instances to finish..."
-    sleep 1
-  done
-}
+# Обновление пакетов
+apt-get update
+apt-get upgrade -y
 
-wait_for_jenkins() {
-  max_retries=30
-  counter=0
-
-  while [ $counter -lt $max_retries ]; do
-    if curl -s http://localhost:8080/login | grep -q "Authentication required"; then
-      echo "Jenkins is up and running!"
-      return 0
-    fi
-    echo "Waiting for Jenkins to be ready..."
-    sleep 2
-    counter=$((counter+1))
-  done
-
-  echo "Jenkins did not become ready in time."
-  return 1
-}
-
-wait_for_sonar() {
-  max_retries=30
-  counter=0
-
-  while [ $counter -lt $max_retries ]; do
-    if curl -s http://localhost:9000/api/system/health | grep -q '"health":"GREEN"'; then
-      echo "SonarQube is up and running!"
-      return 0
-    fi
-    echo "Waiting for SonarQube to be ready..."
-    sleep 2
-    counter=$((counter+1))
-  done
-
-  echo "SonarQube did not become ready in time."
-  return 1
-}
-
-wait_for_apt
-sudo apt-get update
-wait_for_apt
-sudo apt-get install -y mc htop wget
-wait_for_apt
+# Установка основных утилит
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common git jq unzip
 
 # Настройка timezone
@@ -58,9 +13,7 @@ timedatectl set-timezone UTC
 # Установка Docker
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-wait_for_apt
 apt-get update
-wait_for_apt
 apt-get install -y docker-ce docker-ce-cli containerd.io
 usermod -aG docker ${admin_username}
 systemctl enable docker
@@ -71,29 +24,25 @@ curl -L "https://github.com/docker/compose/releases/download/v2.20.3/docker-comp
 chmod +x /usr/local/bin/docker-compose
 
 # Установка Java 17
-wait_for_apt
 apt-get install -y fontconfig openjdk-17-jre openjdk-17-jdk
 
 # Установка Jenkins
 wget -q -O - https://pkg.jenkins.io/debian/jenkins.io-2023.key | apt-key add -
 echo "deb https://pkg.jenkins.io/debian-stable binary/" > /etc/apt/sources.list.d/jenkins.list
-wait_for_apt
 apt-get update
-wait_for_apt
 apt-get install -y jenkins
 usermod -aG docker jenkins
 systemctl enable jenkins
 systemctl start jenkins
-wait_for_jenkins
+
+# Ждем запуска Jenkins
+sleep 30
 
 # Установка Trivy
-wait_for_apt
 apt-get install -y wget apt-transport-https gnupg lsb-release
 wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -
 echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | tee -a /etc/apt/sources.list.d/trivy.list
-wait_for_apt
 apt-get update
-wait_for_apt
 apt-get install -y trivy
 
 # Установка Azure CLI
@@ -111,7 +60,6 @@ docker run -d --name sonar \
   -v /opt/sonarqube/logs:/opt/sonarqube/logs \
   -v /opt/sonarqube/extensions:/opt/sonarqube/extensions \
   sonarqube:lts-community
-wait_for_sonar
 
 # Клонирование проекта Netflix
 git clone https://github.com/ASKoshelenko/DevSecOps.git /tmp/netflix
@@ -120,19 +68,22 @@ cd /tmp/netflix
 # Создаем Dockerfile если его нет
 if [ ! -f Dockerfile ]; then
   cat > Dockerfile << 'EOF'
-FROM node:16 as builder
+FROM node:16.17.0-alpine as builder
 WORKDIR /app
+COPY ./package.json .
+COPY ./yarn.lock .
+RUN yarn install
 COPY . .
-ARG TMDB_V3_API_KEY
-ENV VITE_APP_TMDB_V3_API_KEY=${TMDB_V3_API_KEY}
-RUN npm ci
-RUN npm run build
+ENV VITE_APP_TMDB_V3_API_KEY="c9cbf23e56e7f8dad215a3a7a3758244"
+ENV VITE_APP_API_ENDPOINT_URL="https://api.themoviedb.org/3"
+RUN yarn build
 
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+FROM nginx:stable-alpine
+WORKDIR /usr/share/nginx/html
+RUN rm -rf ./*
+COPY --from=builder /app/dist .
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["nginx", "-g", "daemon off;"]
 EOF
 fi
 
@@ -151,22 +102,21 @@ server {
 EOF
 fi
 
-# Сборка Docker образа с предоставленным API ключом
-docker build --build-arg TMDB_V3_API_KEY=${tmdb_api_key} -t netflix .
+# Логин в Docker Hub
+docker login -u ${docker_username} -p ${docker_password}
 
-# Логин в Azure Container Registry
-docker login ${container_registry} -u ${container_registry_username} -p ${container_registry_password}
+# Сборка Docker образа
+docker build -t netflix .
 
-# Тегирование и отправка образа в ACR
-docker tag netflix ${container_registry}/netflix:latest
-docker push ${container_registry}/netflix:latest
+# Тегирование и отправка образа в Docker Hub
+docker tag netflix ${docker_username}/netflix:latest
+docker push ${docker_username}/netflix:latest
 
 # Запуск Netflix контейнера
-docker run -d --name netflix -p 8081:80 netflix:latest
+docker run -d --name netflix -p 8081:80 ${docker_username}/netflix:latest
 
 # Установка Node.js для Jenkins плагинов
 curl -sL https://deb.nodesource.com/setup_16.x | bash -
-wait_for_apt
 apt-get install -y nodejs
 
 # Вывод информации о Jenkins
@@ -174,7 +124,7 @@ echo "Jenkins initial admin password:"
 cat /var/lib/jenkins/secrets/initialAdminPassword
 
 # Создание Jenkinsfile для pipeline
-cat > /tmp/netflix/Jenkinsfile << 'EOF'
+cat > /tmp/netflix/Jenkinsfile << EOF
 pipeline {
     agent any
     tools {
@@ -183,9 +133,8 @@ pipeline {
     }
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
-        DOCKER_REGISTRY = credentials('docker-registry')
         DOCKER_CREDS = credentials('docker-creds')
-        TMDB_API_KEY = credentials('tmdb-api-key')
+        DOCKER_HUB_REPO = "${docker_username}/netflix"
     }
     stages {
         stage('Clean Workspace') {
@@ -232,25 +181,24 @@ pipeline {
         stage("Docker Build & Push") {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        sh "docker login $DOCKER_REGISTRY -u $DOCKER_USER -p $DOCKER_PASS"
-                        sh "docker build --build-arg TMDB_V3_API_KEY=$TMDB_API_KEY -t netflix ."
-                        sh "docker tag netflix $DOCKER_REGISTRY/netflix:latest"
-                        sh "docker push $DOCKER_REGISTRY/netflix:latest"
+                    withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh "docker login -u \$DOCKER_USERNAME -p \$DOCKER_PASSWORD"
+                        sh "docker build -t \$DOCKER_HUB_REPO:latest ."
+                        sh "docker push \$DOCKER_HUB_REPO:latest"
                     }
                 }
             }
         }
         stage("Trivy Image Scan") {
             steps {
-                sh "trivy image $DOCKER_REGISTRY/netflix:latest > trivyimage.txt"
+                sh "trivy image \$DOCKER_HUB_REPO:latest > trivyimage.txt"
             }
         }
         stage('Deploy to Container') {
             steps {
                 sh 'docker stop netflix || true'
                 sh 'docker rm netflix || true'
-                sh 'docker run -d --name netflix -p 8081:80 $DOCKER_REGISTRY/netflix:latest'
+                sh 'docker run -d --name netflix -p 8081:80 \$DOCKER_HUB_REPO:latest'
             }
         }
     }
@@ -295,9 +243,7 @@ cat > /home/${admin_username}/README.md << 'EOF'
    - Dependency-Check
 
 4. Добавьте учетные данные:
-   - docker-registry: строка с URL регистра контейнеров
-   - docker-creds: логин/пароль для регистра контейнеров
-   - tmdb-api-key: API ключ TMDB
+   - docker-creds: логин/пароль для Docker Hub
    - Sonar-token: токен для SonarQube
 
 5. Создайте Pipeline для проекта Netflix с использованием предоставленного Jenkinsfile.

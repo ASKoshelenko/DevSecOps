@@ -32,33 +32,23 @@ module "storage" {
   allowed_ip_ranges   = var.allowed_ip_ranges
 }
 
-module "container_registry" {
-  source              = "./modules/06_container_registry"
-  resource_group_name = module.network.resource_group_name
-  location            = var.location
-  project_name        = var.project_name
-  environment         = var.environment
-  sku                 = "Basic"
-  admin_enabled       = true
-}
-
 module "jenkins" {
-  source                     = "./modules/03_jenkins"
-  resource_group_name        = module.network.resource_group_name
-  location                   = var.location
-  subnet_id                  = module.network.jenkins_subnet_id
-  project_name               = var.project_name
-  environment                = var.environment
-  admin_username             = var.vm_config.admin_username
-  vm_size                    = var.vm_config.size
-  public_ip_id               = module.network.public_ip_ids["jenkins"]
-  admin_ssh_keys             = var.admin_ssh_keys
-  os_disk_config             = var.vm_os_disk_config
-  source_image_reference     = var.vm_source_image_reference
-  tmdb_api_key               = var.tmdb_api_key
-  container_registry         = module.container_registry.acr_login_server
-  container_registry_username = module.container_registry.acr_admin_username
-  container_registry_password = module.container_registry.acr_admin_password
+  source                 = "./modules/03_jenkins"
+  resource_group_name    = module.network.resource_group_name
+  location               = var.location
+  subnet_id              = module.network.jenkins_subnet_id
+  project_name           = var.project_name
+  environment            = var.environment
+  admin_username         = var.vm_config.admin_username
+  admin_password         = var.admin_password
+  vm_size                = var.vm_config.size
+  public_ip_id           = module.network.public_ip_ids["jenkins"]
+  admin_ssh_keys         = var.admin_ssh_keys
+  os_disk_config         = var.vm_os_disk_config
+  source_image_reference = var.vm_source_image_reference
+  tmdb_api_key           = var.tmdb_api_key
+  docker_username        = var.docker_username
+  docker_password        = var.docker_password
 }
 
 module "monitoring" {
@@ -69,6 +59,7 @@ module "monitoring" {
   project_name           = var.project_name
   environment            = var.environment
   admin_username         = var.vm_config.admin_username
+  admin_password         = var.admin_password
   admin_ssh_keys         = var.admin_ssh_keys
   os_disk_config         = var.vm_os_disk_config
   vm_size                = var.vm_config.size
